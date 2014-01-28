@@ -765,6 +765,7 @@ class CheckSIO(CheckService):
     def handle(self):
 
         self.json_check_as_is()
+
         self.json_check_boolean()
         self.json_check_csv()
         self.json_check_dict()

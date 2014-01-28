@@ -41,7 +41,10 @@ zato_services = {
     'zato.channel.zmq.delete':'zato.server.service.internal.channel.zmq.Delete',
     'zato.channel.zmq.edit':'zato.server.service.internal.channel.zmq.Edit',
     'zato.channel.zmq.get-list':'zato.server.service.internal.channel.zmq.GetList',
-    
+
+    # Checks
+    'zato.checks.sio.check-sio':'zato.server.service.internal.checks.sio.CheckSIO',
+
     # Definitions - AMQP
     'zato.definition.amqp.change-password':'zato.server.service.internal.definition.amqp.ChangePassword',
     'zato.definition.amqp.create':'zato.server.service.internal.definition.amqp.Create',
@@ -227,9 +230,16 @@ class Create(ZatoCommand):
         pubapi_sec = HTTPBasicAuth(None, 'pubapi', True, 'pubapi', 'Zato public API', uuid4().hex, cluster)
         session.add(pubapi_sec)
         
-        self.add_soap_services(session, cluster, admin_invoke_sec, pubapi_sec)
+        self.add_json_soap_services(session, cluster, admin_invoke_sec, pubapi_sec)
         self.add_ping_services(session, cluster)
-        
+
+        # Adds an outgoing HTTP connection through which checks can invoke services being checked.
+        out_check = HTTPSOAP(
+            None, 'zato.check.service', True, True, 'outgoing', 'plain_http',
+            'http://localhost:17010', '/zato/admin/invoke', None, '', None, SIMPLE_IO.FORMAT.JSON,
+            service=None, cluster=cluster, security=admin_invoke_sec)
+        session.add(out_check)
+
         try:
             session.commit()
         except IntegrityError, e:
@@ -249,7 +259,7 @@ class Create(ZatoCommand):
             else:
                 self.logger.info('OK')
             
-    def add_soap_services(self, session, cluster, admin_invoke_sec, pubapi_sec):
+    def add_json_soap_services(self, session, cluster, admin_invoke_sec, pubapi_sec):
         """ Adds these Zato internal services that can be accessed through SOAP requests.
         """
         

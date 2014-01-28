@@ -38,7 +38,7 @@ class MessageFacade(object):
         self.xpath_store = xpath_store
 
     def elem_path(self, msg, name):
-        return self.elem_path_store.get(name).invoke(msg)
+        return self.elem_path_store.invoke(msg, name, needs_text=False)
 
     def xpath(self, msg, name):
         return self.xpath_store.invoke(msg, name)
@@ -157,13 +157,14 @@ class _BaseXPathStore(object):
         """ Invokes an expression of expr_name against the msg and returns
         results.
         """
-        logger.debug('ElemPath expr_name:[%s], msg:[%s], needs_text:[%s]', 
+        logger.warn('ElemPath expr_name:[%s], msg:[%s], needs_text:[%s]', 
             expr_name, msg, needs_text)
 
         if isinstance(msg, dict):
-            msg = self.convert_dict_to_xml(msg)
+            msg_to_convert = {'root': msg} if len(msg) > 1 else msg
+            msg = self.convert_dict_to_xml(msg_to_convert)
 
-        logger.debug('ElemPath msg:[%s]', msg)
+        logger.warn('ElemPath msg:[%s]', msg)
 
         expr = self.data[expr_name]
 
@@ -172,7 +173,7 @@ class _BaseXPathStore(object):
         else:
             compile_func = expr.compiled_elem
 
-        logger.debug('ElemPath compile_func:[%s]', compile_func)
+        logger.warn('ElemPath compile_func:[%s]', compile_func)
 
         tree = etree.fromstring(msg)
         result = compile_func(tree)

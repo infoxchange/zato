@@ -50,11 +50,15 @@ class CheckService(Service):
             return invoke_response
 
     def invoke_check_json(self, service, payload=None):
-        r = loads(self.invoke_check(service, payload, DATA_FORMAT.JSON))
-        if 'response' in r:
-            out = r['response']
+        response = self.invoke_check(service, payload, DATA_FORMAT.JSON)
+        if isinstance(response, basestring):
+            r = loads(response)
+            if 'response' in r:
+                out = r['response']
+            else:
+                out = r
         else:
-            out = r
+            raise Exception(response['zato_env']['details'])
 
         self.logger.info('Returning [%s]', out)
         return bunchify(out)
