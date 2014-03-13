@@ -296,10 +296,14 @@ class _Client(object):
         if not self.session.auth:
             self.session.auth = auth
         
-    def inner_invoke(self, request, response_class, async, headers, output_repeated=False):
+    def inner_invoke(self, request, response_class, async, headers, output_repeated=False, *args, **kwargs):
         """ Actually invokes a service through HTTP and returns its response.
         """
-        raw_response = self.session.post(self.service_address, request, headers=headers)
+        requests_kwargs = {}
+        if 'verify' in kwargs:
+            requests_kwargs['verify'] = kwargs['verify']
+
+        raw_response = self.session.post(self.service_address, request, headers=headers, **requests_kwargs)
         response = response_class(
             raw_response, self.to_bunch, self.max_response_repr,
             self.max_cid_repr, self.logger, output_repeated)
@@ -312,11 +316,11 @@ class _Client(object):
             
         return response
     
-    def invoke(self, request, response_class, async=False, headers=None, output_repeated=False):
+    def invoke(self, request, response_class, async=False, headers=None, output_repeated=False, *args, **kwargs):
         """ Input parameters are like when invoking a service directly.
         """
         headers = headers or {}
-        return self.inner_invoke(request, response_class, async, headers)
+        return self.inner_invoke(request, response_class, async, headers, *args, **kwargs)
     
 # ##############################################################################
 
@@ -325,10 +329,10 @@ class _JSONClient(_Client):
     """
     response_class = None
     
-    def invoke(self, payload='', headers=None, to_json=True):
+    def invoke(self, payload='', headers=None, to_json=True, *args, **kwargs):
         if to_json:
             payload = dumps(payload)
-        return super(_JSONClient, self).invoke(payload, self.response_class, headers)
+        return super(_JSONClient, self).invoke(payload, self.response_class, headers, *args, **kwargs)
 
 class JSONClient(_JSONClient):
     """ Client for services that accept JSON input.
@@ -345,10 +349,10 @@ class JSONSIOClient(_JSONClient):
 class SOAPSIOClient(_Client):
     """ Client for services that accept Simple IO (SIO) in SOAP.
     """
-    def invoke(self, soap_action, payload=None, headers=None):
+    def invoke(self, soap_action, payload=None, headers=None, *args, **kwargs):
         headers = headers or {}
         headers['SOAPAction'] = soap_action
-        return super(SOAPSIOClient, self).invoke(payload, SOAPSIOResponse, headers=headers)
+        return super(SOAPSIOClient, self).invoke(payload, SOAPSIOResponse, headers=headers, *args, **kwargs)
     
 class AnyServiceInvoker(_Client):
     """ Uses zato.service.invoke to invoke other services. The services being invoked
@@ -362,7 +366,7 @@ class AnyServiceInvoker(_Client):
         
     def _invoke(self, name=None, payload='', headers=None, channel='invoke', data_format='json',
                 transport=None, async=False, expiration=BROKER.DEFAULT_EXPIRATION, id=None,
-                to_json=True, output_repeated=ZATO_NOT_GIVEN):
+                to_json=True, output_repeated=ZATO_NOT_GIVEN, *args, **kwargs):
             
         if not(name or id):
             raise ZatoException(msg='Either name or id must be provided')
@@ -379,7 +383,7 @@ class AnyServiceInvoker(_Client):
                    'async': async, 'expiration':expiration
                    }
 
-        return super(AnyServiceInvoker, self).invoke(dumps(request), ServiceInvokeResponse, async, headers, output_repeated)
+        return super(AnyServiceInvoker, self).invoke(dumps(request), ServiceInvokeResponse, async, headers, output_repeated, *args, **kwargs)
         
     def invoke(self, *args, **kwargs):
         return self._invoke(async=False, *args, **kwargs)
@@ -390,14 +394,14 @@ class AnyServiceInvoker(_Client):
 # ##############################################################################
     
 class XMLClient(_Client):
-    def invoke(self, payload='', headers=None):
-        return super(XMLClient, self).invoke(payload, XMLResponse, headers)
+    def invoke(self, payload='', headers=None, *args, **kwargs):
+        return super(XMLClient, self).invoke(payload, XMLResponse, headers, *args, **kwargs)
     
 class SOAPClient(_Client):
-    def invoke(self, soap_action, payload='', headers=None):
+    def invoke(self, soap_action, payload='', headers=None, *args, **kwargs):
         headers = headers or {}
         headers['SOAPAction'] = soap_action
-        return super(SOAPClient, self).invoke(payload, SOAPResponse, headers=headers)
+        return super(SOAPClient, self).invoke(payload, SOAPResponse, headers=headers, *args, **kwargs)
     
 # ##############################################################################
     
@@ -405,7 +409,7 @@ class RawDataClient(_Client):
     """ Client which doesn't process requests before passing them into a service.
     Likewise, no parsing of response is performed.
     """
-    def invoke(self, payload='', headers=None):
-        return super(RawDataClient, self).invoke(payload, RawDataResponse, headers)
+    def invoke(self, payload='', headers=None, *args, **kwargs):
+        return super(RawDataClient, self).invoke(payload, RawDataResponse, headers, *args, **kwargs)
     
 # ##############################################################################
