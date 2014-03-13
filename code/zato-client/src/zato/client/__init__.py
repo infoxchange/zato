@@ -299,7 +299,11 @@ class _Client(object):
     def inner_invoke(self, request, response_class, async, headers, output_repeated=False, *args, **kwargs):
         """ Actually invokes a service through HTTP and returns its response.
         """
-        raw_response = self.session.post(self.service_address, request, headers=headers)
+        requests_kwargs = {}
+        if 'verify' in kwargs:
+            requests_kwargs['verify'] = kwargs['verify']
+
+        raw_response = self.session.post(self.service_address, request, headers=headers, **requests_kwargs)
         response = response_class(
             raw_response, self.to_bunch, self.max_response_repr,
             self.max_cid_repr, self.logger, output_repeated)
